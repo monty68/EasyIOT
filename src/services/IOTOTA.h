@@ -15,7 +15,7 @@
 #define _IOTOTA_H
 
 #include "core/IOTFunction.h"
-#include "core/iotHttp.h"
+#include "core/IOTHttp.h"
 
 /*
 ** "Over the Air" Update Function Class

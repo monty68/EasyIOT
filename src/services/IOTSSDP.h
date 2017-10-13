@@ -19,7 +19,7 @@
 
 #include "core/IOTFunction.h"
 #include "core/IOTTimer.h"
-#include "core/iotHttp.h"
+#include "core/IOTHttp.h"
 
 /*
 ** Methods

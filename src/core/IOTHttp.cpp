@@ -14,7 +14,7 @@
 ** damages in connection with, or arising out of, the furnishing, performance
 ** or use of these programs.
 */
-#include "iotHttp.h"
+#include "IOTHttp.h"
 #include "http/PAGEHandler.h"
 #include "http/FILEHandler.h"
 
