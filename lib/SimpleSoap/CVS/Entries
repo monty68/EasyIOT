@@ -1,0 +1,33 @@
+D/Debug////
+D/o////
+/Base64Encoder.cpp/1.1/Fri Mar  4 13:03:16 2005//
+/Base64Encoder.h/1.1/Fri Mar  4 13:03:16 2005//
+/License.txt/1.1/Tue Mar 22 22:16:35 2005//
+/ReadMe.txt/1.1/Fri Mar  4 13:40:56 2005//
+/SOAPAttribute.cpp/1.1/Mon Jul 12 22:06:56 2004//
+/SOAPAttribute.h/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPDispatcher.cpp/1.1/Tue Mar 22 22:22:14 2005//
+/SOAPDispatcher.h/1.1/Tue Mar 22 22:22:14 2005//
+/SOAPElement.cpp/1.1/Sun Mar  6 08:04:16 2005//
+/SOAPElement.h/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPEncoder.cpp/1.1/Tue Mar 22 22:22:14 2005//
+/SOAPEncoder.h/1.1/Tue Mar 22 22:22:14 2005//
+/SOAPEncoder.o/1.1/Sun Mar  6 08:19:10 2005/-kb/
+/SOAPFault.cpp/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPFault.h/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPMethod.cpp/1.1/Tue Mar 22 22:22:14 2005//
+/SOAPMethod.h/1.1/Fri Mar  4 15:12:30 2005//
+/SOAPObject.cpp/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPObject.h/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPObjectCreator.cpp/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPObjectCreator.h/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPParser.cpp/1.1/Sun Mar  6 08:17:26 2005//
+/SOAPParser.h/1.1/Fri Mar  4 13:03:16 2005//
+/SOAPSender.cpp/1.1/Mon Jul 12 22:06:56 2004//
+/SOAPSender.h/1.1/Wed Mar  2 10:04:48 2005//
+/SOAPSender.h.tmp/1.1/Wed Mar  2 10:45:12 2005//
+/SimpleSoap.h/1.1/Tue Mar 22 12:08:38 2005//
+/SimpleSoap.vcproj/1.1/Fri Mar  4 15:12:30 2005//
+/TSOAPObjectCreator.h/1.1/Sun Mar  6 12:39:34 2005//
+/build.sh/1.1/Mon Mar 21 13:29:10 2005//
+/singleton.h/1.1/Tue Mar 22 22:22:16 2005//

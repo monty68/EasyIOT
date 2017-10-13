@@ -1,0 +1,14 @@
+{
+  "name": "EasyIOT",
+  "version": "0.0.0.1",
+  "keywords": "IOT",
+  "license": "Apache-2.0",
+  "description": "Easy 'Internet of Things' Library for ESP32",
+  "frameworks": "arduino",
+  "platforms": "esp32",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/monty68/EasyIOT.git"
+  }
+}

@@ -1,0 +1,25 @@
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+IOT		KEYWORD1
+IOTPIN  KEYWORD1
+IOTPWM  KEYWORD1
+IOTTIME KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+iotStartup		KEYWORD2
+iotShutdown	    KEYWORD2
+iotService      KEYWORD2
+Property        KEYWORD2
+setLabel        KEYWORD2
+getLabel        KEYWORD2
+getPreffix      KEYWORD2
+getSuffix       KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
