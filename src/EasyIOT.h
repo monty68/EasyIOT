@@ -19,7 +19,7 @@
 #include <esp_log.h>
 #include "core/IOTProperty.h"
 #include "core/IOTFunction.h"
-#include "core/IOTPin.h"
+#include "core/IOTPIN.h"
 
 #include "services/IOTSNTP.h"
 #include "services/IOTSSDP.h"
