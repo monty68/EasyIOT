@@ -26,7 +26,7 @@ class PAGEHandler : public HTTPHandler
     {
     }
 
-    bool canHandle(HTTPMethod requestMethod, String requestUri) override
+    bool httpCanHandle(HTTPMethod requestMethod, String requestUri) override
     {
         if (_method != HTTP_ANY && _method != requestMethod)
             return false;
@@ -37,29 +37,29 @@ class PAGEHandler : public HTTPHandler
         return true;
     }
 
-    bool canUpload(String requestUri) override
+    bool httpCanUpload(String requestUri) override
     {
-        if (!_ufn || !canHandle(HTTP_POST, requestUri))
+        if (!_ufn || !httpCanHandle(HTTP_POST, requestUri))
             return false;
 
         return true;
     }
 
-    bool handle(IOTHTTP &server, HTTPMethod requestMethod, String requestUri) override
+    bool httpHandle(IOTHTTP &server, HTTPMethod requestMethod, String requestUri) override
     {
         (void)server;
-        if (!canHandle(requestMethod, requestUri))
+        if (!httpCanHandle(requestMethod, requestUri))
             return false;
 
         _fn(server);
         return true;
     }
 
-    void upload(IOTHTTP &server, String requestUri, HTTPUpload &upload) override
+    void httpUpload(IOTHTTP &server, String requestUri, HTTPUpload &upload) override
     {
         (void)server;
         (void)upload;
-        if (canUpload(requestUri))
+        if (httpCanUpload(requestUri))
             _ufn(server);
     }
 

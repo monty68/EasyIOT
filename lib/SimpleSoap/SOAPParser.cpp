@@ -620,7 +620,7 @@ SOAPParser::XMLNStoURN& SOAPParser::getNamespacesInUse()
 
 void SOAPParser::setFailed()
 {
-    m_pFault = std::auto_ptr<SOAPFault>( new SOAPFault );
+    m_pFault = std::unique_ptr<SOAPFault>( new SOAPFault );
 }
 
 SOAPFault* SOAPParser::getFault()

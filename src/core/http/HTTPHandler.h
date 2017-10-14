@@ -45,20 +45,20 @@ class HTTPHandler
   public:
     virtual ~HTTPHandler() {}
     
-    virtual bool canHandle(HTTPMethod method, String uri)
+    
+        // httpAccept
+        // httpHandle
+        // httpUploadable
+        // httpUpload
+
+    virtual bool httpCanHandle(HTTPMethod method, String uri)
     {
         (void)method;
         (void)uri;
         return false;
     }
 
-    virtual bool canUpload(String uri)
-    {
-        (void)uri;
-        return false;
-    }
-
-    virtual bool handle(IOTHTTP &server, HTTPMethod requestMethod, String requestUri)
+    virtual bool httpHandle(IOTHTTP &server, HTTPMethod requestMethod, String requestUri)
     {
         (void)server;
         (void)requestMethod;
@@ -66,7 +66,13 @@ class HTTPHandler
         return false;
     }
 
-    virtual void upload(IOTHTTP &server, String requestUri, HTTPUpload &upload)
+    virtual bool httpCanUpload(String uri)
+    {
+        (void)uri;
+        return false;
+    }
+
+    virtual void httpUpload(IOTHTTP &server, String requestUri, HTTPUpload &upload)
     {
         (void)server;
         (void)requestUri;

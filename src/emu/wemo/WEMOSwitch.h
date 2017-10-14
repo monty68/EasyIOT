@@ -14,16 +14,18 @@
 #ifndef _IOT_WEMO_SWITCH_H
 #define _IOT_WEMO_SWITCH_H
 
-#include "services/iotSSDP.h"
+#include "services/IOTSSDP.h"
 //#include "SOAPParser.h"
 
 /*
 ** Defintions
 */
-#define WEMO_UUID_PREFIX "Socket-1_0-"
-#define WEMO_DEVICE_TYPE "urn:Belkin:device:controllee:1"
+#define WEMOS_UUID_PREFIX "Socket-1_0-"
+#define WEMOS_DEVICE_TYPE "urn:Belkin:device:controllee:1"
+
 #define WEMO_SEARCH_TYPE "urn:Belkin:device:**"
 #define WEMO_MANU_NAME "Belkin International Inc."
+#define WEMO_MANU_URL "http://www.belkin.com"
 #define WEMO_URL_CTRL "/upnp/control/basicevent1"
 #define WEMO_URL_EVNT "/upnp/event/basicevent1"
 #define WEMO_URL_SCPD "/eventservice.xml"
@@ -39,13 +41,15 @@ public:
   friend class IOTPIN;
   IOTWEMOS(IOTPIN &pin, uint16_t port = WEMO_DEFAULT_PORT) : IOTWEMOS(&pin, port) {}
   IOTWEMOS(IOTPIN *pin, uint16_t port = WEMO_DEFAULT_PORT)
-      : UPNPDevice(WEMO_DEVICE_TYPE, port),
+      : UPNPDevice(WEMOS_DEVICE_TYPE, port),
         _pinFunction(pin)
   {
     snprintf(_devTag, sizeof(_devTag) - 1, "WeMoS/%d", port);
-    String manu = WEMO_MANU_NAME;
-    upnpManufacturer(manu);
-    _dataPrefix = WEMO_UUID_PREFIX;
+    String man = WEMO_MANU_NAME;
+    upnpManufacturer(man);
+    man = WEMO_MANU_URL;
+    upnpManufacturerURL(man);
+    _dataPrefix = WEMOS_UUID_PREFIX;
     _dataSuffix = WEMO_SEARCH_TYPE;
   }
 
@@ -77,19 +81,19 @@ protected:
     }
   }
 
-  String schemaExtra(IOTHTTP &server)
+  String upnpServiceList(IOTHTTP &server)
   {
     String wemoExtra = (_pinFunction->pinState() ? WEMO_UPNP_ON : WEMO_UPNP_OFF);
 
     ESP_LOGD(_tag, "Schema State: %s", wemoExtra.c_str());
 
     wemoExtra += "<service>"
-                    "<serviceType>urn:Belkin:service:basicevent:1</serviceType>"
-                    "<serviceId>urn:Belkin:serviceId:basicevent1</serviceId>"
-                    "<controlURL>" WEMO_URL_CTRL "</controlURL>"
-                    "<eventSubURL>" WEMO_URL_EVNT "</eventSubURL>"
-                    "<SCPDURL>" WEMO_URL_SCPD "</SCPDURL>"
-                  "</service>";
+                 "<serviceType>urn:Belkin:service:basicevent:1</serviceType>"
+                 "<serviceId>urn:Belkin:serviceId:basicevent1</serviceId>"
+                 "<controlURL>" WEMO_URL_CTRL "</controlURL>"
+                 "<eventSubURL>" WEMO_URL_EVNT "</eventSubURL>"
+                 "<SCPDURL>" WEMO_URL_SCPD "</SCPDURL>"
+                 "</service>";
 
     return wemoExtra;
   }
@@ -99,31 +103,31 @@ protected:
     String eventservice_xml =
         "<?xml version=\"1.0\"?>"
         "<scpd xmlns=\"urn:Belkin:service-1-0\">"
-        "<actionList>"
-          "<action>"
-            "<name>SetBinaryState</name>"
-            "<argumentList>"
-              "<argument>"
-                "<retval/>"
-                "<name>BinaryState</name>"
-                "<relatedStateVariable>BinaryState</relatedStateVariable>"
-                "<direction>in</direction>"
-              "</argument>"
-            "</argumentList>"
-          "</action>"
-        "</actionList>"
-             "<serviceStateTable>"
-              "<stateVariable sendEvents=\"yes\">"
-                "<name>BinaryState</name>"
-                "<dataType>Boolean</dataType>"
-                "<defaultValue>0</defaultValue>"
-              "</stateVariable>"
-              "<stateVariable sendEvents=\"yes\">"
-                "<name>level</name>"
-                "<dataType>string</dataType>"
-                "<defaultValue>0</defaultValue>"
-              "</stateVariable>"
-            "</serviceStateTable>"
+          "<actionList>"
+            "<action>"
+              "<name>SetBinaryState</name>"
+                "<argumentList>"
+                  "<argument>"
+                    "<retval/>"
+                    "<name>BinaryState</name>"
+                    "<relatedStateVariable>BinaryState</relatedStateVariable>"
+                    "<direction>in</direction>"
+                  "</argument>"
+                "</argumentList>"
+              "</action>"
+            "</actionList>"
+        "<serviceStateTable>"
+          "<stateVariable sendEvents=\"yes\">"
+            "<name>BinaryState</name>"
+            "<dataType>Boolean</dataType>"
+            "<defaultValue>0</defaultValue>"
+          "</stateVariable>"
+          "<stateVariable sendEvents=\"yes\">"
+            "<name>level</name>"
+            "<dataType>string</dataType>"
+            "<defaultValue>0</defaultValue>"
+          "</stateVariable>"
+        "</serviceStateTable>"
         "</scpd>\r\n"
         "\r\n";
 

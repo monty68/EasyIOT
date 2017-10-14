@@ -14,7 +14,8 @@
 ** damages in connection with, or arising out of, the furnishing, performance
 ** or use of these programs.
 */
-#include "iotSSDP.h"
+#include "IOTSSDP.h"
+#include "core/IOTRandom.h"
 
 #undef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -39,6 +40,8 @@ static const char _ssdp_notify_template[] =
     "HOST: 239.255.255.250:1900\r\n"
     "NTS: ssdp:%s\r\n";
 
+// TODO: Add DATE: Header to response packets
+//
 static const char _ssdp_packet_template[] =
     "%s"
     "CACHE-CONTROL: max-age=%u\r\n"
@@ -122,7 +125,7 @@ void IOTSSDP::iotService(void)
             _pendingPort = _udpServer.remotePort();
 
             ESP_LOGV(_tag, "Packet: %s:%d [%s]", _pendingAddr.toString().c_str(), _pendingPort, _st.c_str());
-            
+
             for (device = _firstDevice; device; device = device->nextDevice())
             {
                 bool match = false;
@@ -131,7 +134,7 @@ void IOTSSDP::iotService(void)
                 if (device->_state != IOT_RUNNING)
                     continue;
 
-                if ((_st == "ssdp:all" && !_skipAll) || (match = device->testDevice(_st)))
+                if ((_st == "ssdp:all" && !_skipAll) || (match = device->upnpCanHandle(_st)))
                 {
                     // Limit response delay to max 6 Seconds
                     // Amazon Alexa only waits a short time
@@ -142,13 +145,14 @@ void IOTSSDP::iotService(void)
                     device->_pending = true;
                     timerPeriod(_delay);
                     timerReset();
-                    _udpServer.flush();
                 }
             }
         }
+
+        _udpServer.flush();        
     }
-    
-    if ((timerPeriod()) && timerExpired() || _udpServer.available())
+
+    if ((timerPeriod()) && timerExpired() /* || _udpServer.available()*/)
     {
         for (device = _firstDevice; device; device = device->nextDevice())
         {
@@ -162,10 +166,14 @@ void IOTSSDP::iotService(void)
             }
         }
 
-        timerPeriod(0);        
+        timerPeriod(0);
     }
-    else
-        yield();
+
+    if (timerPeriod())
+    {
+        while (_udpServer.parsePacket())
+            _udpServer.flush();
+    }
 }
 
 /*
@@ -209,14 +217,14 @@ void IOTSSDP::_respond(UPNPDevice *device, ssdp_method_t method)
 {
     char buffer[1460];
     char valueBuffer[strlen(_ssdp_notify_template) + 10];
-    String surl = device->upnpSchemaURL();    
+    String surl = device->upnpSchemaURL();
     String st_nt = device->upnpDeviceType();
     const char *nts = (method == SSDP::BYEBYE ? "byebye" : method == SSDP::UPDATE ? "update" : "alive");
 
-    const char *schema = surl.c_str();    
+    const char *schema = surl.c_str();
     if (*schema == '/')
         schema++;
-        
+
     if (method == SSDP::NONE && device->upnpSearchType() != "")
         st_nt = device->upnpSearchType();
 
@@ -239,14 +247,15 @@ void IOTSSDP::_respond(UPNPDevice *device, ssdp_method_t method)
     {
         if (!_udpServer.beginPacket(_pendingAddr, _pendingPort))
             return;
-        device->_pending = false;           
+        device->_pending = false;
         ESP_LOGD(_tag, "Response: %s:%d - [%s] %s",
-                 _udpServer.remoteIP().toString().c_str(), _udpServer.remotePort(), 
+                 _udpServer.remoteIP().toString().c_str(), _udpServer.remotePort(),
                  _st.c_str(),
                  device->upnpDeviceType().c_str());
     }
     else if (!_udpServer.beginMulticastPacket())
     {
+        ESP_LOGE(_tag, "Error starting multicast packet.");
         return;
     }
     else

@@ -130,8 +130,10 @@ void IOTFunction::_initFunction(void)
             ESP_LOGE(_tag, "nvs_open failed: %s", nvs_error(err));
         }
         
-        if (!(_flags & IOT_FLAG_LOCK_LABEL))
+        if (!(_flags & IOT_FLAG_LOCK_LABEL)) {
             _label = _loadLabel(strLabel, _label, IOTFunction_MAX_LABEL);
+            ESP_LOGD(_tag, "Loaded Label: %s", _label);
+        }
 
         for (int p = 0; _Properties != nullptr && p < _propCount; p++)
             _loadProperty(_Properties[p]);

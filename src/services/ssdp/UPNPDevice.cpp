@@ -24,8 +24,10 @@
 
 static const char *defDeviceURL = "https://github.com/monty68/EasyIOT";
 static const char *defSchemaURL = "/schema.xml";
-static const char *defPresentationURL = "index.html";
+static const char *defPresentationURL = "/index.html";
 static const char *upnp_rootdevice = "upnp:rootdevice";
+static const char *headerSOAPAction = "SOAPAction";
+static const char *headerSID = "SID";
 
 /*
 #define UPNP_DEVICE_TYPE "urn:EasyIOT:device:esp:1"
@@ -49,38 +51,32 @@ https://wso2.com/library/3212/
 
 The next element, <faultstring>, provides a short and human readable explanation of what the error is. Both these elements, faultcode and faultstring, are mandatory elements of a SOAP fault message in SOAP 1.1. In the case of SOAP 1.2, faultstring is renamed to Reason and faultcode is renamed to Code. But this code element can contain a hierarchy of fault codes. Code listing 2 shows a segment from a SOAP 1.2 fault message, with two fault codes encapsulated within the Code element.
 
-const char _upnp_schema_header[] =
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Type: text/xml\r\n"
-    "Content-Length: %d"
-    "Connection: close\r\n"
-    "Access-Control-Allow-Origin: *\r\n"
-    "\r\n";
 */
 
 const char _upnp_schema_template[] =
     "<?xml version=\"1.0\"?>"
     "<root xmlns=\"urn:schemas-upnp-org:device-1-0\">"
-        "<specVersion>"
-            "<major>1</major>"
-            "<minor>0</minor>"
-        "</specVersion>"
-        "<URLBase>http://%s:%u/</URLBase>"
-        "<device>"
-            "<deviceType>%s</deviceType>"
-            "<friendlyName>%s</friendlyName>"
-            "<manufacturer>%s</manufacturer>"
-            "<manufacturerURL>%s</manufacturerURL>"
-            "<modelName>%s</modelName>"
-            "<modelNumber>%s</modelNumber>"
-            "<modelURL>%s</modelURL>"
-            "<serialNumber>%s</serialNumber>"
-            "<presentationURL>%s</presentationURL>"
-            "<UDN>uuid:%s</UDN>"
-            "<serviceList>"
-                "%s"
-            "</serviceList>"    
-        "</device>"
+    "<URLBase>http://%s:%u/</URLBase>"
+    "<device>"
+    "<friendlyName>%s</friendlyName>"
+    "<deviceType>%s</deviceType>"
+    "<manufacturer>%s</manufacturer>"
+    "<manufacturerURL>%s</manufacturerURL>"
+    // <modelDescription></<modelDescription>
+    "<modelName>%s</modelName>"
+    "<modelNumber>%s</modelNumber>"
+    "<modelURL>%s</modelURL>"
+    "<serialNumber>%s</serialNumber>"
+    "<UDN>uuid:%s</UDN>"
+    // <UPC></UPC>
+    "<serviceList>%s</serviceList>"
+    "<deviceList>%s</deviceList>"
+    "<presentationURL>%s</presentationURL>"
+    "</device>"
+    "<specVersion>"
+    "<major>1</major>"
+    "<minor>0</minor>"
+    "</specVersion>"
     "</root>\r\n"
     "\r\n";
 
@@ -101,40 +97,38 @@ UPNPDevice::UPNPDevice(const char *deviceType, uint16_t port, uint32_t interval)
       _nextDevice(nullptr)
 {
     char buf[200] = {0};
-
-    snprintf(_devTag, sizeof(_devTag) - 1, "SSDP/%d", port);
-    _dataFlags = IOT_FLAG_SYSTEM | IOT_FLAG_CONFIG | IOT_FLAG_LOCK_LABEL;
-    _dataLabel = (char *)deviceType;
+    uint16_t pFlags = IOT_FLAG_SYSTEM | IOT_FLAG_CONFIG;
+    _dataFlags = IOT_FLAG_SYSTEM | IOT_FLAG_CONFIG | IOT_FLAG_READONLY | IOT_FLAG_LOCK_LABEL;
     _flags = IOT_FLAG_SYSTEM | IOT_FLAG_CONFIG | IOT_FLAG_VOLATILE;
+    
+    snprintf(_devTag, sizeof(_devTag) - 1, "SSDP/%d", port);
+    _dataLabel = (char *)deviceType;
     _Properties[0] = this; // UUID
-
+    
     // Schema URL
-    _Properties[1] = new IOTPropertyString(this, _flags, defSchemaURL, UPNP_SCHEMA_URL_SIZE, UPNP_PCLASS);
+    _Properties[1] = new IOTPropertyString(this, pFlags, defSchemaURL, UPNP_SCHEMA_URL_SIZE, UPNP_PCLASS);
 
     // Serial Number
     snprintf(buf, UPNP_SERIAL_NUMBER_SIZE, "%" PRIu64, ESP.getEfuseMac());
-    _Properties[2] = new IOTPropertyString(this, _flags, buf, UPNP_SERIAL_NUMBER_SIZE, UPNP_PCLASS);
+    _Properties[2] = new IOTPropertyString(this, pFlags, buf, UPNP_SERIAL_NUMBER_SIZE, UPNP_PCLASS);
 
     // Model Name
-    snprintf(buf, UPNP_MODEL_NAME_SIZE, "%s-%s", strEasyIoT, ARDUINO_BOARD);
-    _Properties[3] = new IOTPropertyString(this, _flags, buf, UPNP_MODEL_NAME_SIZE, UPNP_PCLASS);
+    snprintf(buf, UPNP_MODEL_NAME_SIZE, "%s:%s", strEasyIoT, IOTMaster::iotModel());
+    _Properties[3] = new IOTPropertyString(this, pFlags, buf, UPNP_MODEL_NAME_SIZE, UPNP_PCLASS);
 
     // Model Number
-    snprintf(buf, UPNP_MODEL_VERSION_SIZE, "%s:%s", (IOT_VERSION), ESP.getSdkVersion());
-    _Properties[4] = new IOTPropertyString(this, _flags, buf, UPNP_MODEL_VERSION_SIZE, UPNP_PCLASS);
+    snprintf(buf, UPNP_MODEL_VERSION_SIZE, "%s:%s", IOTMaster::iotVersion(), IOTMaster::iotBoard());
+    _Properties[4] = new IOTPropertyString(this, pFlags, buf, UPNP_MODEL_VERSION_SIZE, UPNP_PCLASS);
 
     // Model URL
-    _Properties[5] = new IOTPropertyString(this, _flags, defDeviceURL, UPNP_MODEL_URL_SIZE, UPNP_PCLASS);
+    _Properties[5] = new IOTPropertyString(this, pFlags, defDeviceURL, UPNP_MODEL_URL_SIZE, UPNP_PCLASS);
 
     // Manufacturer
-    snprintf(buf, UPNP_MANUFACTURER_SIZE, "DIY - %s", strEasyIoT);
-    _Properties[6] = new IOTPropertyString(this, _flags, buf, UPNP_MANUFACTURER_SIZE, UPNP_PCLASS);
+    snprintf(buf, UPNP_MANUFACTURER_SIZE, "%s", strEasyIoT);
+    _Properties[6] = new IOTPropertyString(this, pFlags, buf, UPNP_MANUFACTURER_SIZE, UPNP_PCLASS);
 
     // Manufacturer URL
-    _Properties[7] = new IOTPropertyString(this, _flags, defDeviceURL, UPNP_MANUFACTURER_URL_SIZE, UPNP_PCLASS);
-
-    // Presentation URL
-    _Properties[8] = new IOTPropertyString(this, _flags, defPresentationURL, UPNP_PRESENTATION_URL_SIZE, UPNP_PCLASS);
+    _Properties[7] = new IOTPropertyString(this, pFlags, defDeviceURL, UPNP_MANUFACTURER_URL_SIZE, UPNP_PCLASS);
 }
 
 /*
@@ -162,12 +156,17 @@ void UPNPDevice::iotStartup(void)
         return;
     }
 
-    // TODO: Make UUID Unique on the fly and save in NVS!
     const char *uuidHeader = (_dataPrefix != NULL) ? _dataPrefix : strNull;
-    ESP_LOGD(_tag, "UUID - Header: %s Body: %s (%p)", uuidHeader, _dataVal);
-    snprintf(_dataVal, UPNP_UUID_SIZE, "%s%s", uuidHeader, _iotMaster->iotUUID());
-    ESP_LOGD(_tag, "UUID: %s", _dataVal);
-    //_saveProperty(this);
+
+    if ((_dataVal != nullptr) && *_dataVal == '\0')
+    {
+        String uuid = iotRandom.uuidGenerator(true);
+        ESP_LOGI(_tag, "Generated UUID - (%s)%s", uuidHeader, uuid.c_str());
+        _dataFlags &= ~IOT_FLAG_READONLY;
+        snprintf(_dataVal, UPNP_UUID_SIZE, "%s%s", uuidHeader, uuid.c_str());
+        _saveProperty(this);
+    }
+    _dataFlags |= IOT_FLAG_READONLY;
 
     // Setup web service
     if (_webServer == nullptr)
@@ -192,7 +191,14 @@ void UPNPDevice::iotStartup(void)
         }
         else
         {
-            _webServer->on(upnpSchemaURL(), HTTP_GET, std::bind(&UPNPDevice::sendSchema, this, std::placeholders::_1));
+            const char * headerkeys[] = { headerSOAPAction, headerSID } ;
+            size_t headerkeyssize = sizeof(headerkeys)/sizeof(char*);
+
+            //ask server to track these headers
+            _webServer->collectHeaders(headerkeys, headerkeyssize);
+            _webServer->webHandler(this);
+            
+            //_webServer->on(upnpSchemaURL(), HTTP_GET, std::bind(&UPNPDevice::sendSchema, this, std::placeholders::_1));
         }
     }
 
@@ -273,14 +279,16 @@ void UPNPDevice::iotNotify(ssdp_method_t method)
 /*
 ** Compare DeviceType with passed query string
 */
-bool UPNPDevice::testDevice(String &st)
+bool UPNPDevice::upnpCanHandle(String &st)
 {
-    if (st.equalsIgnoreCase(upnp_rootdevice)) {
+    if (st.equalsIgnoreCase(upnp_rootdevice))
+    {
         ESP_LOGV(_tag, "[%s]=%d - %s", st.c_str(), _isRoot, upnpDeviceType().c_str());
         return _isRoot;
     }
 
-    if (st.equalsIgnoreCase(upnpDeviceType()) || st.equalsIgnoreCase(upnpSearchType())) {
+    if (st.equalsIgnoreCase(upnpDeviceType()) || st.equalsIgnoreCase(upnpSearchType()))
+    {
         ESP_LOGV(_tag, "[%s] - %s", st.c_str(), upnpDeviceType().c_str());
         return true;
     }
@@ -288,37 +296,127 @@ bool UPNPDevice::testDevice(String &st)
     return false;
 }
 
-/*
-** Send Device Schema
-*/
-void UPNPDevice::sendSchema(IOTHTTP &server)
+bool UPNPDevice::httpCanHandle(HTTPMethod method, String uri)
 {
-    if (_state == IOT_RUNNING)
+    if (uri == defPresentationURL)
+        return true;
+    if (method == HTTP_GET && uri == upnpSchemaURL())
+        return true;
+    //if (method == HTTP_GET && uri == upnpServiceURL())
+        //return true;
+    if (uri.startsWith("/upnp/"))
+        return true;
+    return false;
+}
+
+bool UPNPDevice::httpHandle(IOTHTTP &server, HTTPMethod method, String uri)
+{
+    if (_state != IOT_RUNNING)
+        server.send(503);
+
+    // Presentation URL, send redirect to masters web server port/page
+    //
+    if (uri == "/" || uri == defPresentationURL)
+    {
+        uint16_t pPort = Master()->Server()->webPort();
+
+        if (pPort != _webPort) {
+            server.sendHeader("Location", upnpPresentation(server));
+            // UPNP 1.1 Spec: Send 307 NOT 301
+            return server.send(307);
+        }
+
+        return server.send(503);
+    }
+
+    // Send Device Schema
+    //
+    if (method == HTTP_GET && uri == upnpSchemaURL())
     {
         char buffer[1460];
-
+        
         snprintf(buffer, sizeof(buffer), _upnp_schema_template,
                  WiFi.localIP().toString().c_str(), _webPort,
-                 upnpDeviceType().c_str(),
                  getLabel(),
+                 upnpDeviceType().c_str(),
                  upnpManufacturer().c_str(),
                  upnpManufacturerURL().c_str(),
                  upnpModelName().c_str(),
                  upnpModelNumber().c_str(),
                  upnpModelURL().c_str(),
                  upnpSerialNumber().c_str(),
-                 upnpPresentationURL().c_str(),
                  upnpUUID().c_str(),
-                 schemaExtra(server).c_str());
+                 upnpServiceList(server).c_str(),
+                 upnpDeviceList(server).c_str(),
+                 upnpPresentation(server).c_str());
 
-        server.send(200, MIME_TYPE_XML, buffer);
+        return server.send(200, MIME_TYPE_XML, buffer);
     }
-    else
-        server.send(503);
+
+    // SOAP Action(s)
+    //
+    // The presence and content of the SOAPAction header field can be used by servers such as 
+    // firewalls to appropriately filter SOAP request messages in HTTP. The header field value 
+    // of empty string ("") means that the intent of the SOAP message is provided by the HTTP 
+    // Request-URI. No value means that there is no indication of the intent of the message.
+    //    
+    String urn("");
+    String act("");
+
+    if (server.hasHeader(headerSOAPAction)) {
+        urn = server.header(headerSOAPAction);
+
+        ESP_LOGD(_tag, "SOAPAction: %s (%d, %s)", urn.c_str(), method, uri.c_str());
+        if (urn == "")
+            return server.send(500);
+
+        if (urn[0] == '"')
+            urn = urn.substring(1, urn.length() - 1);
+
+        int hash = urn.indexOf('#');
+
+        if (hash) {
+            act = urn.substring(hash + 1);
+            urn.remove(hash);
+        }
+
+        ESP_LOGD(_tag, "URN: %s", urn.c_str());
+        ESP_LOGD(_tag, "ACT: %s", act.c_str());
+        
+        return true;    
+    }
+
+    ESP_LOGD(_tag, "Handle: %d, %s", method, uri.c_str());    
+    
+    return false;
 }
 
-String UPNPDevice::schemaExtra(IOTHTTP &server)
+String UPNPDevice::upnpPresentation(IOTHTTP &server)
+{
+    uint16_t pPort = Master()->Server()->webPort();
+    const char *path = defPresentationURL;
+
+    if (*path == '/')
+        path++;
+
+    if (pPort != _webPort)
+    {
+        char url[200];
+
+        sprintf(url, "http://%s:%d/%s", WiFi.localIP().toString().c_str(), pPort, path);
+        return String(url);
+    }
+    return String(path);
+}
+
+String UPNPDevice::upnpServiceList(IOTHTTP &server)
 {
     return String();
 }
+
+String UPNPDevice::upnpDeviceList(IOTHTTP &server)
+{
+    return String();
+}
+
 /******************************************************************************/

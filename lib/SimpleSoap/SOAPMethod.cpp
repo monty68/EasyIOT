@@ -124,7 +124,7 @@ bool SOAPMethod::succeeded()
 
 void SOAPMethod::setFailed()
 {
-    m_pFault = std::auto_ptr<SOAPFault>( new SOAPFault );
+    m_pFault = std::unique_ptr<SOAPFault>( new SOAPFault );
     m_bSucceeded = false;
 }
 

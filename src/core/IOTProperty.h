@@ -62,16 +62,15 @@ class IOTMaster;
 #define IOT_FLAG_CONTROL 0x0002
 #define IOT_FLAG_READONLY 0x0008
 #define IOT_FLAG_VOLATILE 0x0010
-
-#define IOT_FLAG_SYSTEM 0x0100
-#define IOT_FLAG_CONFIG 0x0200
-#define IOT_FLAG_LOCK_LABEL 0x0400
-#define IOT_FLAG_DISABLED 0x0800
-
+#define IOT_FLAG_INVERT 0x0100      // Used by IOTPIN
+#define IOT_FLAG_SYSTEM 0x0200
+#define IOT_FLAG_CONFIG 0x0400
+#define IOT_FLAG_LOCK_LABEL 0x0800
+#define IOT_FLAG_DISABLED 0x1000
 #define IOT_FLAG_RESTART 0x8000
 
 /*
-** Property (Data) Type
+** Property (Data) Type - This Matches the UPnP 1.1 Device Architecture Data Types
 */
 enum class PROPERTY_TYPE
 {
@@ -88,6 +87,7 @@ enum class PROPERTY_TYPE
 
   // Additional Data Types
   //
+  BOOL,  // Boolean (map to ST number)
   STREAM // Stream of data bytes
 };
 
@@ -120,7 +120,7 @@ enum class PROPERTY_CLASS
   RELATIVE_HUMIDITY,
   VOLTAGE,
 
-  // Special: Boolean - also see iotPin.h
+  // Special: Boolean - also see IOTPIN.h
   BOOL = (0x1000),
   BOOLEAN,
   MOTION,
@@ -323,6 +323,8 @@ private:
   String _stringify(double t) { return String(t, 4); }
 };
 
+// TODO: Add logic inversion flag
+//
 class IOTPropertyBool : public IOTPropertyNumber<bool>
 {
 public:
@@ -330,7 +332,7 @@ public:
                   PROPERTY_CLASS pClass, const char *prefix = NULL, const char *suffix = NULL, const char *label = NULL)
       : IOTPropertyNumber(IOTFunction, flags, dataRef, 0, 1, pClass, prefix, suffix, label)
   {
-    _dataType = PROPERTY_TYPE::ENUM;
+    _dataType = PROPERTY_TYPE::BOOL;
   }
 
   String getData(void)

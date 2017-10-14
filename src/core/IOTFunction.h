@@ -17,6 +17,7 @@
 #include <Arduino.h>
 #include "esp_log.h"
 #include "IOTProperty.h"
+#include "IOTRandom.h"
 #include "IOTHttp.h"
 
 /*
@@ -25,19 +26,6 @@
 class IOTMaster;
 class IOTFunction;
 
-/*
-** Equates and Defintions
-*/
-#ifndef IOT_VERSION
-#define IOT_VERSION "0.0.0.1"
-#endif
-
-//this should be defined at build time
-#ifndef ARDUINO_BOARD
-#define ARDUINO_BOARD "esp32"
-#endif
-
-#define IOT_UUID_LENGTH 37
 #define IOTFunction_MAX_TAG 12
 #define IOTFunction_MAX_LABEL 48
 
@@ -119,13 +107,18 @@ public:
   IOTMaster(const char *ssid = NULL, const char *pass = NULL, uint16_t port = 80, bool lockWifi = false);
   ~IOTMaster();
 
+  static const char *iotVersion(void);  
+  static const char *iotBoard(void);
+  static const char *iotModel(void);
+
+  //String iotUUID(void) { return String(_uuid); }
+  const char *iotUUID(void) const { return &_uuid[0]; }
+    
   void iotStartup(void);
   void iotShutdown(void);
   void iotService(void);
   void iotRestart(void);  
   void iotReboot(void) { _needReboot = true; }
-  const char *iotUUID(void) const { return &_uuid[0]; }
-  //String iotUUID(void) { return String(_uuid); }
 
   IOTFunction& addFunction(IOTFunction &fun) { (void)addFunction(&fun); return fun; }
   void addFunction(IOTFunction *fun);

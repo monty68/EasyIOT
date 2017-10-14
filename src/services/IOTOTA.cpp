@@ -11,7 +11,7 @@
 ** damages in connection with, or arising out of, the furnishing, performance
 ** or use of these programs.
 */
-#include "iotOTA.h"
+#include "IOTOTA.h"
 
 /*
 ** Class Construction

@@ -118,7 +118,7 @@ class IOTHTTP : protected WiFiServer
     void webStartup(void);
     void webShutdown(void);
     void webService(void);
-    uint16_t webPort(void) { return _port; }    
+    uint16_t webPort(void) { return _port; }   
     void webHandler(HTTPHandler *handler);
     void webAuthenticate(void);
     bool webCredentials(const char *username, const char *password);
@@ -152,9 +152,9 @@ class IOTHTTP : protected WiFiServer
     void sendHeader(const String &name, const String &value, bool first = false);
     void sendContent(const String &content);
 
-    void send(int code, const char *content_type = NULL, const String &content = String(""));
-    void send(int code, char *content_type, const String &content);
-    void send(int code, const String &content_type, const String &content);
+    bool send(int code, const char *content_type = NULL, const String &content = String(""));
+    bool send(int code, char *content_type, const String &content);
+    bool send(int code, const String &content_type, const String &content);
 
     void setContentLength(size_t contentLength) { _contentLength = contentLength; }    
     static String urlDecode(const String &text);
@@ -185,7 +185,9 @@ private:
     void _addRequestHandler(HTTPHandler *handler);
     bool _collectHeader(const char *headerName, const char *headerValue);
     void _prepareHeader(String &response, int code, const char *content_type, size_t contentLength);
-    void _handleRequest(void);    
+    void _handleRequest(void); 
+       
+    String _methodToString(int method);    
     String _responseCodeToString(int code);
 
     bool _parseRequest(WiFiClient &client);

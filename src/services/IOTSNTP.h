@@ -11,8 +11,8 @@
 ** damages in connection with, or arising out of, the furnishing, performance
 ** or use of these programs.
 */
-#ifndef _IOT_NTP_H
-#define _IOT_NTP_H
+#ifndef _IOT_SNTP_H
+#define _IOT_SNTP_H
 
 #include "core/IOTFunction.h"
 
@@ -41,5 +41,5 @@ class IOTSNTP : public IOTFunction, public IOTProperty
     char _timeStr[IOSNTP_MAX_STRING];
 };
 
-#endif // _IOT_NTP_H
+#endif // _IOT_SNTP_H
 /******************************************************************************/

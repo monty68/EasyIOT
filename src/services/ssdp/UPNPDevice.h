@@ -39,7 +39,7 @@
 /*
 ** Device Class
 */
-class UPNPDevice : public IOTFunction, public IOTPropertyString, private IOTTimer
+class UPNPDevice : public IOTFunction, public IOTPropertyString, protected HTTPHandler, private IOTTimer
 {
     public:
         friend class IOTSSDP;
@@ -72,21 +72,25 @@ class UPNPDevice : public IOTFunction, public IOTPropertyString, private IOTTime
         bool upnpModelURL(String& s) { return Property(5)->setData(s); }
         bool upnpManufacturer(String& s) { return Property(6)->setData(s); }
         bool upnpManufacturerURL(String& s) { return Property(7)->setData(s); }
-        bool upnpPresentationURL(String& s) { return Property(8)->setData(s); }
+
+        void upnpFriendlyName(String* label) { setLabel(label->c_str(), false); }    
+        void upnpFriendlyName(String& label) { setLabel(label.c_str(), false); }
+        void upnpFriendlyName(const char *label) { setLabel(label, false); }
         
     protected:
         virtual void iotStartup(void);
         virtual void iotShutdown(void);
         virtual void iotService(void);
         virtual bool _propUpdate(IOTProperty *prop);        
-        virtual void sendSchema(IOTHTTP &server);
-        virtual String schemaExtra(IOTHTTP &server);
-        virtual bool testDevice(String& st);
 
+        virtual bool upnpCanHandle(String& st);
+        virtual bool httpCanHandle(HTTPMethod method, String uri) override;
+        virtual bool httpHandle(IOTHTTP &server, HTTPMethod requestMethod, String requestUri) override;
 
-        void soapSend();
-        void soapError();
-
+        virtual String upnpPresentation(IOTHTTP &server);        
+        virtual String upnpServiceList(IOTHTTP &server);
+        virtual String upnpDeviceList(IOTHTTP &server);
+        
 
         UPNPDevice *nextDevice() { return _nextDevice; }
         void nextDevice(UPNPDevice *d) { _nextDevice = d; }

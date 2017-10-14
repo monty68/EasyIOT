@@ -199,7 +199,7 @@ private:
     
     // ElementContainer
     // Description: Container of SOAPElements.
-    //typedef std::vector< std::auto_ptr<SOAPElement> > ElementContainer;
+    //typedef std::vector< std::unique_ptr<SOAPElement> > ElementContainer;
 	typedef std::vector<SOAPElement*> ElementContainer;
 
     // m_internalElements

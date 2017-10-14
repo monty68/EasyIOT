@@ -13,7 +13,7 @@ private:
     // Friend so that the constructor can be called from the
     // parent.
     friend Singleton<CMyClass>;
-    friend std::auto_ptr<CMyClass>;
+    friend std::unique_ptr<CMyClass>;
     // Private constructor so that users of the class can't
     // instantiate their own copy on the stack.
     CMyClass();
@@ -96,7 +96,7 @@ private:
     // As an auto_ptr, we won't get memory leaks
     // because it will be destroyed when the program
     // shuts down and before memory leak detection kicks in.
-    static std::auto_ptr<T> m_ptheSingleton;
+    static std::unique_ptr<T> m_ptheSingleton;
 
 protected:
     // Constructor
@@ -116,7 +116,7 @@ public:
 };
 
 template <class T>
-std::auto_ptr<T> Singleton<T>::m_ptheSingleton;
+std::unique_ptr<T> Singleton<T>::m_ptheSingleton;
 
 template <class T>
 T& Singleton<T>::Instance()
@@ -125,7 +125,7 @@ T& Singleton<T>::Instance()
     // Only create the object if needed.
     if ( NULL == m_ptheSingleton.get() ) 
     {
-        m_ptheSingleton = std::auto_ptr<T>( new T() );
+        m_ptheSingleton = std::unique_ptr<T>( new T() );
     }
     if ( NULL == m_ptheSingleton.get() )
     {

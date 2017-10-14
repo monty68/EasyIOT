@@ -22,7 +22,15 @@
 /*
 ** General Defintions and Equates
 */
-#define IOT_UUID_SERIAL "47843fea-e025-40bd-a38c-"
+#define IOT_UUID_SERIAL "50fbbdab-5418-41c1-a96d-"
+
+// These should be defined at build time
+#ifndef IOT_VERSION
+#define IOT_VERSION "0.0.0.1"
+#endif
+#ifndef ARDUINO_BOARD
+#define ARDUINO_BOARD "esp32"
+#endif
 
 /*
 ** System State
@@ -35,16 +43,12 @@ RTC_DATA_ATTR static int iotStatus = 0;
 IOTMaster::IOTMaster(const char *ssid, const char *pass, uint16_t port, bool lockWiFi)
     : IOTFunction("iot", 3),
       _webServer(nullptr),
-      _needReboot(false)
+      _needReboot(false),
+      _chipID(0)
 {
-    char host[IOT_MAX_HOST + 1];
-
-    _chipID = ESP.getEfuseMac(); // The chip ID is essentially its MAC address(length: 6 bytes).
-    sprintf(host, "easyiot-%04X%08X", (uint16_t)(_chipID >> 32), (uint32_t)_chipID);
-    sprintf(_uuid, "%s%04x%08x", IOT_UUID_SERIAL, (uint16_t)(_chipID >> 32), (uint32_t)_chipID);
     Serial.begin(115200);
 
-    ESP_LOGV(_tag, "Default Hostname %s", host);
+    _chipID = ESP.getEfuseMac();
     uint16_t flags = IOT_FLAG_SYSTEM | IOT_FLAG_CONFIG | IOT_FLAG_LOCK_LABEL;
 
     if (lockWiFi)
@@ -52,7 +56,7 @@ IOTMaster::IOTMaster(const char *ssid, const char *pass, uint16_t port, bool loc
 
     _Properties[0] = new IOTPropertyString(this, flags, ssid, IOT_MAX_SSID, PROPERTY_CLASS::GENERIC);
     _Properties[1] = new IOTPropertyString(this, flags, pass, IOT_MAX_PASS, PROPERTY_CLASS::GENERIC);
-    _Properties[2] = new IOTPropertyString(this, flags, &host[0], IOT_MAX_HOST, PROPERTY_CLASS::IPHOST);
+    _Properties[2] = new IOTPropertyString(this, flags, strNull, IOT_MAX_HOST, PROPERTY_CLASS::IPHOST);
 
     /*
     //_Properties[3] = new IOTProperty<bool>(this, true, false, "Use DHCP");
@@ -84,60 +88,31 @@ IOTMaster::~IOTMaster()
     }
 }
 
-/*
-** Reset (to defaults) the device
-*/
-void IOTMaster::sysReset(void)
+const char *IOTMaster::iotVersion(void)
 {
-    ESP_LOGI(_tag, "* System Reset *");
-    iotShutdown();
-
-    esp_err_t err;
-
-    if (!_nvsHandle)
-    {
-        if ((err = nvs_open(_tag, NVS_READWRITE, &_nvsHandle)))
-        {
-            _nvsHandle = 0;
-            ESP_LOGE(_tag, "nvs_open failed: %s", nvs_error(err));
-        }
-    }
-
-    if (_nvsHandle)
-    {
-        ESP_LOGI(_tag, "Erasing NVS.");
-        if ((err = nvs_erase_all(_nvsHandle)))
-            ESP_LOGE(_tag, "nvs_erase_all fail: %s", nvs_error(err));
-    }
-
-    iotReboot();
+    return IOT_VERSION;
 }
 
-/*
-** Reboot the device
-*/
-void IOTMaster::sysReboot(void)
+const char *IOTMaster::iotBoard(void)
 {
-    ESP_LOGI(_tag, "* System Reboot *");
+    return ARDUINO_BOARD;
+}
 
-    for (int i = 10; i >= 0; i--)
+const char *IOTMaster::iotModel(void)
+{
+    uint8_t rev;
+
+    switch ((rev = ESP.getChipRevision()))
     {
-        ESP_LOGI(_tag, "Restarting in %d seconds...", i);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    case 0:
+        return "ESP32D0WDQ6";
+    case 1:
+        return "ESP32D0WDQ5";
+    case 2:
+        return "ESP32D2WDQ5";
     }
 
-    iotShutdown();
-
-    ESP_LOGI(_tag, "Restarting now.");
-    
-    if (_nvsHandle)
-        nvs_close(_nvsHandle);
-    _nvsHandle = 0;
-    
-    fflush(stdout);
-    Serial.flush();
-    Serial.end();
-    esp_restart();
+    return iotBoard();
 }
 
 /*
@@ -173,7 +148,22 @@ void IOTMaster::iotStartup(void)
 
     ESP_LOGI(_tag, "Connecting WiFi.");
     WiFi.begin((char *)_Properties[0]->_dataPtr(), (char *)_Properties[1]->_dataPtr());
-    WiFi.setHostname((char *)_Properties[2]->_dataPtr());
+
+    iotRandom.useRNG = true;
+    String uuid = iotRandom.uuidGenerator(true);
+    snprintf(_uuid, IOT_UUID_LENGTH, "%s%s", IOT_UUID_SERIAL, uuid.substring(IOT_UUID_MAC_INDEX).c_str());
+    ESP_LOGV(_tag, "Default UUID %s", _uuid);
+
+    char *host = (char *)_Properties[2]->_dataPtr();
+
+    if (*host == '\0')
+    {
+        snprintf(host, IOT_MAX_HOST, "easyiot-%s", &_uuid[IOT_UUID_MAC_INDEX]);
+        _saveProperty(_Properties[2]);
+        ESP_LOGV(_tag, "Default Hostname (%s) set.", host);
+    }
+
+    WiFi.setHostname(host);
 
     int count = 0;
     while (WiFi.status() != WL_CONNECTED)
@@ -187,7 +177,7 @@ void IOTMaster::iotStartup(void)
         }
     }
 
-    ESP_LOGI(_tag, "WiFi SSID  : %s", WiFi.SSID().c_str());
+    ESP_LOGI(_tag, "\nWiFi SSID  : %s", WiFi.SSID().c_str());
     ESP_LOGI(_tag, "Hostname   : %s", WiFi.getHostname());
     ESP_LOGI(_tag, "MAC Address: %s", WiFi.macAddress().c_str());
     ESP_LOGI(_tag, "IP Address : %s", WiFi.localIP().toString().c_str());
@@ -197,7 +187,7 @@ void IOTMaster::iotStartup(void)
 
     if (_webServer != NULL)
     {
-        ESP_LOGI(_tag, "Starting mDNS Service.");        
+        ESP_LOGI(_tag, "Starting mDNS Service.");
         if (!MDNS.begin(WiFi.getHostname()))
         {
             ESP_LOGW(_tag, "Failed to start mDNS Service");
@@ -284,14 +274,16 @@ void IOTMaster::iotService(void)
     IOTFunction *func = listHead();
 
     while (func != nullptr && _state == IOT_RUNNING)
-    {        
+    {
         if (func->_state == IOT_RUNNING && !(func->_flags & IOT_FLAG_DISABLED))
         {
-            if (func->_flags & IOT_FLAG_RESTART) {
+            if (func->_flags & IOT_FLAG_RESTART)
+            {
                 ESP_LOGI(_tag, "Restarting");
                 func->iotShutdown();
                 func->iotStartup();
-            }else
+            }
+            else
                 func->iotService();
             yield();
         }
@@ -313,6 +305,62 @@ void IOTMaster::iotRestart(void)
 }
 
 /*
+** Reset (to defaults) the device
+*/
+void IOTMaster::sysReset(void)
+{
+    ESP_LOGI(_tag, "* System Reset *");
+    iotShutdown();
+
+    esp_err_t err;
+
+    if (!_nvsHandle)
+    {
+        if ((err = nvs_open(_tag, NVS_READWRITE, &_nvsHandle)))
+        {
+            _nvsHandle = 0;
+            ESP_LOGE(_tag, "nvs_open failed: %s", nvs_error(err));
+        }
+    }
+
+    if (_nvsHandle)
+    {
+        ESP_LOGI(_tag, "Erasing NVS.");
+        if ((err = nvs_erase_all(_nvsHandle)))
+            ESP_LOGE(_tag, "nvs_erase_all fail: %s", nvs_error(err));
+    }
+
+    iotReboot();
+}
+
+/*
+** Reboot the device
+*/
+void IOTMaster::sysReboot(void)
+{
+    ESP_LOGI(_tag, "* System Reboot *");
+
+    for (int i = 10; i >= 0; i--)
+    {
+        ESP_LOGI(_tag, "Restarting in %d seconds...", i);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+
+    iotShutdown();
+
+    ESP_LOGI(_tag, "Restarting now.");
+
+    if (_nvsHandle)
+        nvs_close(_nvsHandle);
+    _nvsHandle = 0;
+
+    fflush(stdout);
+    Serial.flush();
+    Serial.end();
+    esp_restart();
+}
+
+/*
 ** Master (web) Service
 */
 IOTHTTP *IOTMaster::Server(void) const
@@ -327,33 +375,39 @@ void IOTMaster::addFunction(IOTFunction *func)
 {
     if ((!func) || func == this || func->_iotMaster == this)
         return;
-    
+
     IOTFunction *test = Function(func->_tag);
-    if (test == nullptr) {
+    if (test == nullptr)
+    {
         ESP_LOGV(_tag, "addFunction(%s)", func->_tag);
         func->_iotMaster = this;
         listAppend(func);
-    }else
-        ESP_LOGE(_tag, "addFunction(%s) - Error, duplicate tag", func->_tag);    
+    }
+    else
+        ESP_LOGE(_tag, "addFunction(%s) - Error, duplicate tag", func->_tag);
 }
 
 /*
 ** List Handlers
 */
-IOTFunction *IOTMaster::listHead(void) const { 
+IOTFunction *IOTMaster::listHead(void) const
+{
     return _listPrev;
 }
 
-IOTFunction *IOTMaster::listTail(void) const { 
+IOTFunction *IOTMaster::listTail(void) const
+{
     return _listNext;
 }
 
-void IOTMaster::listHead(IOTFunction *head) { 
-    _listPrev = head; 
+void IOTMaster::listHead(IOTFunction *head)
+{
+    _listPrev = head;
 }
 
-void IOTMaster::listTail(IOTFunction *tail) {
-    _listNext = tail; 
+void IOTMaster::listTail(IOTFunction *tail)
+{
+    _listNext = tail;
 }
 
 void IOTMaster::listInsert(IOTFunction *func, IOTFunction *pSibling)

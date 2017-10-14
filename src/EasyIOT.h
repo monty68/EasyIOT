@@ -27,6 +27,6 @@
 
 #endif // _IOT_H
 #else // ARDUINO_ARCH_ESP32
-  #error "EasyIOT only supports ESP32 boards!"
+  #error "EasyIOT (currently) only supports ESP32 boards!"
 #endif
 /******************************************************************************/

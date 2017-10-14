@@ -25,6 +25,18 @@
 #define ICACHE_FLASH_ATTR
 #endif
 
+#define IOT_UUID_LENGTH 37
+#define IOT_UUID_MAC_INDEX 24
+
+typedef union {
+	uint8_t b[16];
+	struct
+	{
+		uint64_t ll1;
+		uint64_t ll2;
+	};
+} iot_uuid_t;
+
 class IOTRandom
 {
   public:
@@ -38,7 +50,15 @@ class IOTRandom
 	ICACHE_FLASH_ATTR void memfill(char* location, int size);
 	ICACHE_FLASH_ATTR void mac(uint8_t* macLocation);
 	ICACHE_FLASH_ATTR void uuid(uint8_t* uuidLocation);
+
+	ICACHE_FLASH_ATTR String uuidToString(iot_uuid_t& u) { return uuidToString(&u.b[0]); }
+	ICACHE_FLASH_ATTR String uuidToString(iot_uuid_t* u) { return uuidToString(&u->b[0]); }	
 	ICACHE_FLASH_ATTR String uuidToString(uint8_t* uuidLocation);
+
+	ICACHE_FLASH_ATTR String uuidGenerator(bool addMAC = false);
+	ICACHE_FLASH_ATTR void uuidGenerator(iot_uuid_t* u, bool addMAC = false);
+	ICACHE_FLASH_ATTR void uuidGenerator(iot_uuid_t& u, bool addMAC = false) { uuidGenerator(&u, addMAC); }	
+	
     bool useRNG;
   private:
     unsigned long lastYield;
@@ -46,7 +66,11 @@ class IOTRandom
     ICACHE_FLASH_ATTR int randomBitRaw2(void);
 };
 
-extern IOTRandom ESP8266TrueRandom;
+// Just in case! Backwards compatability
+#ifndef ESP8266TrueRandom
+#define ESP8266TrueRandom iotRandom
+#endif
+extern IOTRandom iotRandom;
 
 #endif // _IOT_RANDOM_H
 /******************************************************************************/

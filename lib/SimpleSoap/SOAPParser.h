@@ -221,7 +221,7 @@ protected:
     
     // m_pFault
     // Description: Stores a pointer to the fault data (if any).
-    std::auto_ptr<SOAPFault> m_pFault;
+    std::unique_ptr<SOAPFault> m_pFault;
 };
 
 #endif // !defined(SOAPPARSER_H)

@@ -112,7 +112,7 @@ private:
     // Allow these two to create and destroy this class.
     // The file singleton.h explains why this is necessary.
     friend class Singleton< SOAPDispatcher >;
-    friend class std::auto_ptr<SOAPDispatcher>;
+    friend class std::unique_ptr<SOAPDispatcher>;
     // Constructor/ Destructor
     SOAPDispatcher();
     virtual ~SOAPDispatcher();

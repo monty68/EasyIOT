@@ -104,7 +104,7 @@ std::string SOAPDispatcher::processMessage(
 
     if ( it != m_creatorContainer.end() )
     {
-        std::auto_ptr<SOAPObject> pObject = std::auto_ptr<SOAPObject>( it->second->newSOAPObject() );
+        std::unique_ptr<SOAPObject> pObject = std::unique_ptr<SOAPObject>( it->second->newSOAPObject() );
         if ( NULL != pObject.get() )
         {
             // Iterate over the list of methods

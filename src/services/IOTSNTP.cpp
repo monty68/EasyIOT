@@ -17,7 +17,7 @@
 #include "WiFi.h"
 #include <esp32-hal.h>
 #include <apps/sntp/sntp.h>
-#include "iotSNTP.h"
+#include "IOTSNTP.h"
 
 #define IOTSNTP_PROPERTIES 2
 #define IOTSNTP_MAX_PROPERTIES (IOTSNTP_PROPERTIES + SNTP_MAX_SERVERS)
@@ -33,7 +33,7 @@ IOTSNTP::IOTSNTP(const char *defTZ)
     _timeInfo = {0};
 
     _flags = IOT_FLAG_SYSTEM | IOT_FLAG_CONFIG | IOT_FLAG_LOCK_LABEL;
-    _dataFlags = _flags | IOT_FLAG_READONLY;
+    _dataFlags = _flags | IOT_FLAG_READONLY  | IOT_FLAG_VOLATILE;
     _Properties[0] = this;
     _Properties[1] = new IOTPropertyString(this, _flags, defTZ, 28, PROPERTY_CLASS::TIMEZONE);
 
@@ -79,24 +79,29 @@ void IOTSNTP::iotStartup(void)
         tzset();
         _state = IOT_RUNNING;
 
-        uint32_t count = 15000 / 100;
-
-        while (count--)
+        // wait for the service to set the time
+        int count = 0;
+        time(&_timeTick);
+        localtime_r(&_timeTick, &_timeInfo);
+        
+        while (_timeInfo.tm_year < (2016 - 1900) && sntp_enabled() && count < 10)
         {
-            ESP_LOGD(_tag, "Syncing time (%d)...", count);            
-            delay(100);
-
+            if (count++ % 3)
+            {
+                ESP_LOGD(_tag, "Syncing time... (forced)");
+                sntp_stop();
+                sntp_init();
+            }else
+                ESP_LOGI(_tag, "Syncing time...");
+            
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
             time(&_timeTick);
             localtime_r(&_timeTick, &_timeInfo);
-
-            if (_timeInfo.tm_year > (2016 - 1900))
-            {
-                break;
-            }
-
-            yield();
         }
 
+        if (sntp_enabled())
+            _state = IOT_RUNNING;
+        
         strftime(buf, sizeof(buf), "%c %Z", &_timeInfo);
         ESP_LOGI(_tag, "Date/time is: %s", buf);
     }
@@ -136,14 +141,14 @@ bool IOTSNTP::_propUpdate(IOTProperty *prop)
 
 String IOTSNTP::getData(void)
 {
-    time(&_timeTick);    
+    time(&_timeTick);
     localtime_r(&_timeTick, &_timeInfo);
     strftime(_timeStr, sizeof(_timeStr), "%c %Z", &_timeInfo);
-    
+
     return String(_timeStr);
 }
 
-bool IOTSNTP::_dataSet(String& newVal)
+bool IOTSNTP::_dataSet(String &newVal)
 {
     return true;
 }

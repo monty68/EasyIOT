@@ -29,7 +29,7 @@ class FILEHandler : public HTTPHandler
         _baseUriLength = _uri.length();
     }
 
-    bool canHandle(HTTPMethod requestMethod, String requestUri) override
+    bool httpCanHandle(HTTPMethod requestMethod, String requestUri) override
     {
         if (requestMethod != HTTP_GET)
             return false;
@@ -40,9 +40,9 @@ class FILEHandler : public HTTPHandler
         return true;
     }
 
-    bool handle(IOTHTTP &server, HTTPMethod requestMethod, String requestUri) override
+    bool httpHandle(IOTHTTP &server, HTTPMethod requestMethod, String requestUri) override
     {
-        if (!canHandle(requestMethod, requestUri))
+        if (!httpCanHandle(requestMethod, requestUri))
             return false;
 
         ESP_LOGD(server.iotTag(), "FILEHandler: request=%s _uri=%s\r\n", requestUri.c_str(), _uri.c_str());

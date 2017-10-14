@@ -151,9 +151,9 @@ class IOTPIN : private IOTTimer, public IOTFunction, public IOTPropertyBool
             setMode(_pinMode);
 
             if (_pinMode & OUTPUT)
-                digitalWrite(_pin, _pinState);
+                _pinWrite();
 
-            if ((_pinState = digitalRead(_pin)))
+            if ((_pinState = _pinRead()))
                 _dbState = _BV(PIN_STATE_DEBOUNCED) | _BV(PIN_STATE_UNSTABLE);
             
             startMillis = _dbMode != PIN_DEBOUNCE::LOCKOUT ? millis() : 0;
@@ -187,7 +187,7 @@ class IOTPIN : private IOTTimer, public IOTFunction, public IOTPropertyBool
 
                 // Ignore everything if we are locked out
                 if (timerExpired()) {
-                    bool currentState = digitalRead(_pin);
+                    bool currentState = _pinRead();
 
                     if ((bool)(_dbState & _BV(PIN_STATE_DEBOUNCED)) != currentState) {
                         timerReset();
@@ -196,7 +196,7 @@ class IOTPIN : private IOTTimer, public IOTFunction, public IOTPropertyBool
                     }
                 }
             }else if(_dbMode == PIN_DEBOUNCE::PROMPT) {
-                bool readState = digitalRead(_pin);
+                bool readState = _pinRead();
                 _dbState &= ~_BV(PIN_STATE_CHANGED);
                 
                 if (readState != (bool)(_dbState & _BV(PIN_STATE_DEBOUNCED))) {
@@ -220,7 +220,7 @@ class IOTPIN : private IOTTimer, public IOTFunction, public IOTPropertyBool
                 }
 
             }else if(_dbMode == PIN_DEBOUNCE::STABLE) {
-                bool currentState = digitalRead(_pin);
+                bool currentState = _pinRead();
                 _dbState &= ~_BV(PIN_STATE_CHANGED);
 
                 // If the reading is different from last reading, reset the debounce counter
@@ -237,7 +237,7 @@ class IOTPIN : private IOTTimer, public IOTFunction, public IOTPropertyBool
                     }
                 }
             }else {
-                _pinState = digitalRead(_pin);
+                _pinState = _pinRead();
                 _dbState &= ~_BV(PIN_STATE_CHANGED);
                 if ((bool)(_dbState & _BV(PIN_STATE_DEBOUNCED)) != _pinState) {
                     _dbState ^= _BV(PIN_STATE_DEBOUNCED);
@@ -258,7 +258,7 @@ class IOTPIN : private IOTTimer, public IOTFunction, public IOTPropertyBool
             ESP_LOGD(_tag, "State Changed: %d", _pinState);
             
             if (! (_pin & IOT_PIN_VIRTUAL))
-                digitalWrite(_pin, _pinState);            
+                _pinWrite();
             return true;
         }
         return false;
@@ -269,6 +269,20 @@ class IOTPIN : private IOTTimer, public IOTFunction, public IOTPropertyBool
     uint8_t _pin, _pinMode, _safeMode;
 
 private:
+    uint8_t _pinRead(void)
+    {
+        if (_flags & IOT_FLAG_INVERT)
+            return !digitalRead(_pin);
+        return digitalRead(_pin);
+    }
+
+    void _pinWrite()
+    {
+        if (_flags & IOT_FLAG_INVERT)
+            digitalWrite(_pin, !_pinState);        
+        digitalWrite(_pin, _pinState);
+    }
+
     uint8_t _dbState;
     PIN_DEBOUNCE _dbMode;
 };

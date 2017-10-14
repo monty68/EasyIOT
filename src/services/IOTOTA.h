@@ -11,8 +11,8 @@
 ** damages in connection with, or arising out of, the furnishing, performance
 ** or use of these programs.
 */
-#ifndef _IOTOTA_H
-#define _IOTOTA_H
+#ifndef _IOT_OTA_H
+#define _IOT_OTA_H
 
 #include "core/IOTFunction.h"
 #include "core/IOTHttp.h"
@@ -31,6 +31,6 @@ protected:
   void iotService(void);
 };
 
-#endif // _IOTOTA_H
+#endif // _IOT_OTA_H
 
 /******************************************************************************/

@@ -46,7 +46,7 @@ IOTHTTP::IOTHTTP(const char *tag, uint16_t port, bool mdns)
       _contentLength(0),
       _chunked(false)
 {
-    ESP_LOGI(_tag, "Created HTTP (%d) Server", _port);    
+    ESP_LOGI(_tag, "Created HTTP (%d) Server", _port);
 }
 
 /*
@@ -84,7 +84,8 @@ void IOTHTTP::webStartup(void)
     if (!_headerKeysCount)
         collectHeaders(0, 0);
 
-    if (_bonjour) {
+    if (_bonjour)
+    {
         delay(500);
         MDNS.addService("_http", "_tcp", _port);
     }
@@ -151,7 +152,7 @@ void IOTHTTP::webService(void)
         }
 
         ESP_LOGV(_tag, "Content Size: %d", _currentClient.available());
-        
+
         if (!_parseRequest(_currentClient))
         {
             _currentClient = WiFiClient();
@@ -210,6 +211,9 @@ void IOTHTTP::_addRequestHandler(HTTPHandler *handler)
     }
     else
     {
+        // TODO: Check we don't already have the handler installed!
+
+
         _lastHandler->nextHandler(handler);
         _lastHandler = handler;
     }
@@ -284,7 +288,7 @@ void IOTHTTP::on(const String &uri, HTTPMethod method, http_callback_t fn)
 
 void IOTHTTP::on(const String &uri, HTTPMethod method, http_callback_t fn, http_callback_t ufn)
 {
-    ESP_LOGD(_tag, "On Handler: %s", uri.c_str());    
+    ESP_LOGD(_tag, "On Handler: %s", uri.c_str());
     _addRequestHandler(new PAGEHandler(fn, ufn, uri, method));
 }
 
@@ -334,9 +338,9 @@ String IOTHTTP::argName(int i)
 ** Headers
 */
 bool IOTHTTP::hasHeader(String name)
-{
+{    
     for (int i = 0; i < _headerKeysCount; ++i)
-    {
+    {       
         if ((_currentHeaders[i].key.equalsIgnoreCase(name)) && (_currentHeaders[i].value.length() > 0))
             return true;
     }
@@ -345,6 +349,7 @@ bool IOTHTTP::hasHeader(String name)
 
 void IOTHTTP::collectHeaders(const char *headerKeys[], const size_t headerKeysCount)
 {
+    // TODO: Merge Existing tracked headers, as the master may have added some!
     _headerKeysCount = headerKeysCount + 1;
     if (_currentHeaders)
         delete[] _currentHeaders;
@@ -458,20 +463,20 @@ void IOTHTTP::sendContent(const String &content)
     }
 }
 
-void IOTHTTP::send(int code, char *content_type, const String &content)
+bool IOTHTTP::send(int code, char *content_type, const String &content)
 {
-    send(code, (const char *)content_type, content);
+    return send(code, (const char *)content_type, content);
 }
 
-void IOTHTTP::send(int code, const String &content_type, const String &content)
+bool IOTHTTP::send(int code, const String &content_type, const String &content)
 {
-    send(code, (const char *)content_type.c_str(), content);
+    return send(code, (const char *)content_type.c_str(), content);
 }
 
-void IOTHTTP::send(int code, const char *content_type, const String &content)
+bool IOTHTTP::send(int code, const char *content_type, const String &content)
 {
     String header;
-    
+
     // Can we asume the following?
     //if(code == 200 && content.length() == 0 && _contentLength == CONTENT_LENGTH_NOT_SET)
     //  _contentLength = CONTENT_LENGTH_UNKNOWN;
@@ -480,9 +485,12 @@ void IOTHTTP::send(int code, const char *content_type, const String &content)
 
     if (content.length())
         sendContent(content);
+
+    ESP_LOGD(_tag, "Served (%s %d %s %s): %s:%d",
+             _methodToString(_currentMethod).c_str(), code, _responseCodeToString(code).c_str(),
+             _currentUri.c_str(), _currentClient.remoteIP().toString().c_str(), _currentClient.remotePort());
     
-    ESP_LOGD(_tag, "Served (%d %d %s): %s:%d - %s", _currentMethod, code, _responseCodeToString(code).c_str(),
-        _currentClient.remoteIP().toString().c_str(), _currentClient.remotePort(), _currentUri.c_str());
+    return true;
 }
 
 /*
@@ -491,14 +499,14 @@ void IOTHTTP::send(int code, const char *content_type, const String &content)
 void IOTHTTP::_handleRequest()
 {
     bool handled = false;
-    
+
     if (!_currentHandler)
     {
-        //ESP_LOGV(_tag, "Request handler not found: %s", _currentUri.c_str());
+        ESP_LOGV(_tag, "Request handler not found: %s", _currentUri.c_str());
     }
     else
     {
-        handled = _currentHandler->handle(*this, _currentMethod, _currentUri);
+        handled = _currentHandler->httpHandle(*this, _currentMethod, _currentUri);
 
         if (!handled)
         {
@@ -519,6 +527,27 @@ void IOTHTTP::_handleRequest()
     }
 
     _currentUri = String();
+}
+
+String IOTHTTP::_methodToString(int method)
+{
+    switch (method)
+    {
+    case HTTP_POST:
+        return "POST";
+    case HTTP_GET:
+        return "GET";
+    case HTTP_PUT:
+        return "PUT";
+    case HTTP_PATCH:
+        return "PATCH";
+    case HTTP_DELETE:
+        return "DELETE";
+    case HTTP_OPTIONS:
+        return "OPTIONS";
+    default:
+        return "unknown";
+    }
 }
 
 String IOTHTTP::_responseCodeToString(int code)
@@ -658,10 +687,11 @@ bool IOTHTTP::_parseRequest(WiFiClient &client)
     // Read the first line of HTTP request
     // Handle bad apps who only send LF!
     String req = client.readStringUntil('\n');
-    if (req[req.length() - 1] == '\r') {
+    if (req[req.length() - 1] == '\r')
+    {
         req.trim();
     }
-    
+
     // reset header value
     for (int i = 0; i < _headerKeysCount; ++i)
     {
@@ -719,13 +749,13 @@ bool IOTHTTP::_parseRequest(WiFiClient &client)
     _currentMethod = method;
 
     ESP_LOGD(_tag, "Method: %s URL: %s Search: %s", methodStr.c_str(), url.c_str(), searchStr.c_str());
-    
+
     // Attach handler
     HTTPHandler *handler;
 
     for (handler = _firstHandler; handler; handler = handler->nextHandler())
     {
-        if (handler->canHandle(_currentMethod, _currentUri))
+        if (handler->httpCanHandle(_currentMethod, _currentUri))
             break;
     }
     _currentHandler = handler;
@@ -742,16 +772,16 @@ bool IOTHTTP::_parseRequest(WiFiClient &client)
         bool isEncoded = false;
         uint32_t contentLength = 0;
 
-        
         // Parse headers
         while (1)
         {
             // Handle bad apps who only send LF!
             String req = client.readStringUntil('\n');
-            if (req[req.length() - 1] == '\r') {
+            if (req[req.length() - 1] == '\r')
+            {
                 req.trim();
             }
-            
+
             if (req == "")
                 break; //no more headers
 
@@ -797,10 +827,10 @@ bool IOTHTTP::_parseRequest(WiFiClient &client)
         }
 
         if (!isForm)
-        {           
+        {
             size_t plainLength;
             char *plainBuf = readBytesWithTimeout(client, contentLength, plainLength, HTTP_MAX_POST_WAIT);
-            
+
             if (plainLength < contentLength)
             {
                 free(plainBuf);
@@ -856,10 +886,11 @@ bool IOTHTTP::_parseRequest(WiFiClient &client)
         {
             // Handle bad apps who only send LF!
             String req = client.readStringUntil('\n');
-            if (req[req.length() - 1] == '\r') {
+            if (req[req.length() - 1] == '\r')
+            {
                 req.trim();
             }
-            
+
             if (req == "")
                 break; //no moar headers
 
@@ -882,7 +913,7 @@ bool IOTHTTP::_parseRequest(WiFiClient &client)
         }
         _parseArguments(searchStr);
     }
-    
+
     client.flush();
 
     //ESP_LOGV(_tag, "Request: %s Args: %s", url.c_str(), searchStr.c_str());
@@ -972,8 +1003,8 @@ void IOTHTTP::_uploadWriteByte(uint8_t b)
 {
     if (_currentUpload.currentSize == HTTP_UPLOAD_BUFLEN)
     {
-        if (_currentHandler && _currentHandler->canUpload(_currentUri))
-            _currentHandler->upload(*this, _currentUri, _currentUpload);
+        if (_currentHandler && _currentHandler->httpCanUpload(_currentUri))
+            _currentHandler->httpUpload(*this, _currentUri, _currentUpload);
         _currentUpload.totalSize += _currentUpload.currentSize;
         _currentUpload.currentSize = 0;
     }
@@ -1099,8 +1130,8 @@ bool IOTHTTP::_parseForm(WiFiClient &client, String boundary, uint32_t len)
 
                         ESP_LOGV(_tag, "Start File: %s Type: %s", _currentUpload.filename.c_str(), _currentUpload.type.c_str());
 
-                        if (_currentHandler && _currentHandler->canUpload(_currentUri))
-                            _currentHandler->upload(*this, _currentUri, _currentUpload);
+                        if (_currentHandler && _currentHandler->httpCanUpload(_currentUri))
+                            _currentHandler->httpUpload(*this, _currentUri, _currentUpload);
 
                         _currentUpload.status = UPLOAD_FILE_WRITE;
                         uint8_t argByte = _uploadReadByte(client);
@@ -1153,18 +1184,18 @@ bool IOTHTTP::_parseForm(WiFiClient &client, String boundary, uint32_t len)
 
                             if (strstr((const char *)endBuf, boundary.c_str()) != NULL)
                             {
-                                if (_currentHandler && _currentHandler->canUpload(_currentUri))
-                                    _currentHandler->upload(*this, _currentUri, _currentUpload);
+                                if (_currentHandler && _currentHandler->httpCanUpload(_currentUri))
+                                    _currentHandler->httpUpload(*this, _currentUri, _currentUpload);
 
                                 _currentUpload.totalSize += _currentUpload.currentSize;
                                 _currentUpload.status = UPLOAD_FILE_END;
 
-                                if (_currentHandler && _currentHandler->canUpload(_currentUri))
-                                    _currentHandler->upload(*this, _currentUri, _currentUpload);
-                                
-                                ESP_LOGV(_tag, "End File: %s Type: %s Size: %d", 
-                                    _currentUpload.filename.c_str(), _currentUpload.type.c_str(), _currentUpload.totalSize);
-                                    
+                                if (_currentHandler && _currentHandler->httpCanUpload(_currentUri))
+                                    _currentHandler->httpUpload(*this, _currentUri, _currentUpload);
+
+                                ESP_LOGV(_tag, "End File: %s Type: %s Size: %d",
+                                         _currentUpload.filename.c_str(), _currentUpload.type.c_str(), _currentUpload.totalSize);
+
                                 line = client.readStringUntil(0x0D);
                                 client.readStringUntil(0x0A);
                                 if (line == "--")
@@ -1202,7 +1233,7 @@ bool IOTHTTP::_parseForm(WiFiClient &client, String boundary, uint32_t len)
 
         int iarg;
         int totalArgs = ((32 - postArgsLen) < _currentArgCount) ? (32 - postArgsLen) : _currentArgCount;
-        
+
         for (iarg = 0; iarg < totalArgs; iarg++)
         {
             RequestArgument &arg = postArgs[postArgsLen++];
@@ -1213,23 +1244,23 @@ bool IOTHTTP::_parseForm(WiFiClient &client, String boundary, uint32_t len)
         if (_currentArgs)
             delete[] _currentArgs;
         _currentArgs = new RequestArgument[postArgsLen];
-        
+
         for (iarg = 0; iarg < postArgsLen; iarg++)
         {
             RequestArgument &arg = _currentArgs[iarg];
             arg.key = postArgs[iarg].key;
             arg.value = postArgs[iarg].value;
         }
-        
+
         _currentArgCount = iarg;
         if (postArgs)
             delete[] postArgs;
-        
+
         return true;
     }
 
     ESP_LOGV(_tag, "ERROR-Line: %s", line.c_str());
-    
+
     return false;
 }
 
@@ -1269,8 +1300,8 @@ String IOTHTTP::urlDecode(const String &text)
 bool IOTHTTP::_parseFormUploadAborted()
 {
     _currentUpload.status = UPLOAD_FILE_ABORTED;
-    if (_currentHandler && _currentHandler->canUpload(_currentUri))
-        _currentHandler->upload(*this, _currentUri, _currentUpload);
+    if (_currentHandler && _currentHandler->httpCanUpload(_currentUri))
+        _currentHandler->httpUpload(*this, _currentUri, _currentUpload);
     return false;
 }
 /******************************************************************************/
